@@ -526,8 +526,8 @@ async function uploadToUpYun(base64Data) {
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
-    const uri = `/${bucket}${fileName}`;
-    const url = `http://v0.api.upyun.com${uri}`;
+    const uri = `/${bucket}/${fileName}`;
+    const url = `https://v0.api.upyun.com${uri}`;
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
@@ -571,6 +571,5 @@ async function uploadToUpYun(base64Data) {
         throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
-    return `http://${domain}${fileName}`;
+    return `https://${domain}/${fileName}`;
 }
-
