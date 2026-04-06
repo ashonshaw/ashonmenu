@@ -536,7 +536,7 @@ async function uploadToUpYun(base64Data) {
     const policyObj = {
         bucket: bucket,
         "save-key": saveKey,
-        expiry: expiry,
+        expiration: expiry,
         allow_file_type: "jpg,jpeg,png,gif"
     };
     const policy = btoa(JSON.stringify(policyObj));
