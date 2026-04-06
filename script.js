@@ -375,43 +375,36 @@ async function uploadToUpYun(base64Data) {
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
-    const url = `https://v0.api.upyun.com/${bucket}/${fileName}`;
     
-    const blob = await fetch(base64Data).then(r => r.blob());
+    // 使用表单上传方式（不需要复杂签名）
+    const formData = new FormData();
+    formData.append('file', await (await fetch(base64Data)).blob());
     
-    // 又拍云签名方法
-    const method = 'PUT';
-    const uri = `/${bucket}/${fileName}`;
-    const date = new Date().toUTCString();
-    
-    const signStr = method + '&' + uri + '\n' +
-                    'Date: ' + date + '\n' +
-                    'Host: v0.api.upyun.com';
-    
-    // 使用 HMAC-SHA1 签名
+    // 构建签名（基于表单字段）
+    const expiration = Math.floor(Date.now() / 1000) + 3600; // 1 小时后过期
+    const signStr = `${expiration}&/${bucket}/${fileName}`;
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(password);
     const signData = encoder.encode(signStr);
+    const hashBuffer = await crypto.subtle.digest('MD5', signData);
+    const signatureArray = new Uint8Array(hashBuffer);
+    const signatureHex = Array.from(signatureArray)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const signature = btoa(signatureHex);
     
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-1' },
-        false,
-        ['sign']
-    );
+    formData.append('bucket', bucket);
+    formData.append('save-key', '/' + fileName);
+    formData.append('expiration', expiration.toString());
+    formData.append('signature', signature);
     
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    const url = `https://v0.api.upyun.com/${bucket}/`;
     
     const response = await fetch(url, {
-        method: 'PUT',
+        method: 'POST',
         headers: {
-            'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
-            'Date': date,
-            'Content-Type': 'image/jpeg'
+            'Authorization': 'UPYUN ' + operator + ':' + btoa(password)
         },
-        body: blob
+        body: formData
     });
     
     if (!response.ok) {
