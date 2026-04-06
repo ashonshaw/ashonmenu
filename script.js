@@ -526,18 +526,26 @@ async function uploadToUpYun(base64Data) {
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
-    const uri = `/${bucket}${fileName}`;
+    const uri = `/${bucket}/${fileName}`;
     const url = `https://v0.api.upyun.com${uri}`;
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
+    // 计算 Content-MD5
+    const arrayBuffer = await blob.arrayBuffer();
+    const contentMD5 = md5(arrayBuffer);
+    
     // REST API 签名
     const method = 'PUT';
-    const date = new Date().toUTCString();
+    // 生成 GMT 格式日期，例如：Mon, 06 Apr 2026 07:34:55 GMT
+    const now = new Date();
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const date = `${days[now.getUTCDay()]}, ${String(now.getUTCDate()).padStart(2, '0')} ${months[now.getUTCMonth()]} ${now.getUTCFullYear()} ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')} GMT`;
     const passwordMD5 = md5(password);
     
-    // 签名字符串：method&uri&date
-    const signStr = `${method}&${uri}&${date}`;
+    // 签名字符串：method&uri&date&contentMD5
+    const signStr = `${method}&${uri}&${date}&${contentMD5}`;
     
     // 使用 HMAC-SHA1 签名
     const encoder = new TextEncoder();
@@ -560,6 +568,7 @@ async function uploadToUpYun(base64Data) {
         method,
         uri,
         date,
+        contentMD5,
         operator,
         signature: signatureBase64
     });
@@ -569,6 +578,7 @@ async function uploadToUpYun(base64Data) {
         headers: {
             'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
             'Date': date,
+            'Content-MD5': contentMD5,
             'Content-Type': 'image/jpeg'
         },
         body: blob
