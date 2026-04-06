@@ -370,41 +370,52 @@ document.getElementById('submit-order').addEventListener('click', async () => {
 
 async function uploadToUpYun(base64Data) {
     const bucket = 'ashonmenu';
-    const operator = 'ashonshaw';
-    const password = '7NXR53nJlX1TIvMz78KSmw1crf8uxvKU';
+    const accessKey = '62275696abca4d12964869d7ab6248ca';
+    const secretKey = '9f7e641d99345c9eb159324f03a840c9';
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
+    const url = `https://${bucket}.s3.api.upyun.com/${fileName}`;
     
-    // 使用表单上传方式（不需要复杂签名）
-    const formData = new FormData();
-    formData.append('file', await (await fetch(base64Data)).blob());
+    const blob = await fetch(base64Data).then(r => r.blob());
     
-    // 构建签名（基于表单字段）
-    const expiration = Math.floor(Date.now() / 1000) + 3600; // 1 小时后过期
-    const signStr = `${expiration}&/${bucket}/${fileName}`;
+    // 使用 S3 风格的签名
+    const method = 'PUT';
+    const contentType = 'image/jpeg';
+    const date = new Date().toUTCString();
+    const canonicalizedResource = `/${bucket}/${fileName}`;
+    
+    // 构建签名字符串
+    const signStr = `${method}\n\n${contentType}\n${date}\n${canonicalizedResource}`;
+    
+    // 使用 HMAC-SHA1 签名
     const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
     const signData = encoder.encode(signStr);
-    const hashBuffer = await crypto.subtle.digest('MD5', signData);
-    const signatureArray = new Uint8Array(hashBuffer);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
+    const signatureArray = new Uint8Array(signature);
     const signatureHex = Array.from(signatureArray)
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
-    const signature = btoa(signatureHex);
-    
-    formData.append('bucket', bucket);
-    formData.append('save-key', '/' + fileName);
-    formData.append('expiration', expiration.toString());
-    formData.append('signature', signature);
-    
-    const url = `https://v0.api.upyun.com/${bucket}/`;
     
     const response = await fetch(url, {
-        method: 'POST',
+        method: 'PUT',
         headers: {
-            'Authorization': 'UPYUN ' + operator + ':' + btoa(password)
+            'Authorization': 'UPYUN ' + accessKey + ':' + btoa(signatureHex),
+            'Date': date,
+            'Content-Type': contentType,
+            'x-upyun-content-sha1': btoa(signatureHex)
         },
-        body: formData
+        body: blob
     });
     
     if (!response.ok) {
