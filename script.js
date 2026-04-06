@@ -532,8 +532,17 @@ async function uploadToUpYun(base64Data) {
     const expiry = Math.floor(Date.now() / 1000) + 3600; // 1小时过期
     const key = password;
     
-    // 生成签名：md5(key + bucket + expiry + save-key)
-    const signStr = key + bucket + expiry + saveKey;
+    // 生成 policy：Base64 编码的 JSON
+    const policyObj = {
+        bucket: bucket,
+        save_key: saveKey,
+        expiry: expiry,
+        allow_file_type: "jpg,jpeg,png,gif"
+    };
+    const policy = btoa(JSON.stringify(policyObj));
+    
+    // 生成签名：md5(key + policy)
+    const signStr = key + policy;
     const signature = md5(signStr);
     
     console.log('表单上传参数:', {
@@ -541,6 +550,7 @@ async function uploadToUpYun(base64Data) {
         operator,
         expiry,
         saveKey,
+        policy,
         signature
     });
     
@@ -550,6 +560,7 @@ async function uploadToUpYun(base64Data) {
     formData.append('operator', operator);
     formData.append('expiry', expiry);
     formData.append('signature', signature);
+    formData.append('policy', policy);
     formData.append('save-key', saveKey);
     
     // 转换 base64 为 Blob
