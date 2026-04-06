@@ -526,53 +526,52 @@ async function uploadToUpYun(base64Data) {
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
-    const saveKey = fileName;
+    const uri = `/${bucket}${fileName}`;
+    const url = `https://v0.api.upyun.com${uri}`;
     
-    // 表单上传参数
-    const expiry = Math.floor(Date.now() / 1000) + 3600; // 1小时过期
-    const key = password;
+    const blob = await fetch(base64Data).then(r => r.blob());
     
-    // 生成 policy：Base64 编码的 JSON
-    const policyObj = {
-        bucket: bucket,
-        "save-key": saveKey,
-        expiration: expiry,
-        allow_file_type: "jpg,jpeg,png,gif"
-    };
-    const policy = btoa(JSON.stringify(policyObj));
+    // REST API 签名
+    const method = 'PUT';
+    const date = new Date().toUTCString();
+    const passwordMD5 = md5(password);
     
-    // 生成签名：md5(key + policy)
-    const signStr = key + policy;
-    const signature = md5(signStr);
+    // 签名字符串：method&uri&date
+    const signStr = `${method}&${uri}&${date}`;
     
-    console.log('表单上传参数:', {
-        bucket,
+    // 使用 HMAC-SHA1 签名
+    const encoder = new TextEncoder();
+    const signData = encoder.encode(signStr);
+    const keyData = encoder.encode(passwordMD5);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    
+    console.log('REST API 上传参数:', {
+        url,
+        method,
+        uri,
+        date,
         operator,
-        expiry,
-        saveKey,
-        policy,
-        signature
+        signature: signatureBase64
     });
     
-    // 创建表单数据
-    const formData = new FormData();
-    formData.append('bucket', bucket);
-    formData.append('operator', operator);
-    formData.append('expiry', expiry);
-    formData.append('signature', signature);
-    formData.append('policy', policy);
-    formData.append('save-key', saveKey);
-    
-    // 转换 base64 为 Blob
-    const blob = await fetch(base64Data).then(r => r.blob());
-    formData.append('file', blob, 'image.jpg');
-    
-    // 表单上传 URL
-    const url = `https://v0.api.upyun.com/${bucket}/upload`;
-    
     const response = await fetch(url, {
-        method: 'POST',
-        body: formData
+        method: method,
+        headers: {
+            'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
+            'Date': date,
+            'Content-Type': 'image/jpeg'
+        },
+        body: blob
     });
     
     console.log('响应状态:', response.status);
@@ -583,8 +582,5 @@ async function uploadToUpYun(base64Data) {
         throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
-    const result = await response.json();
-    console.log('上传结果:', result);
-    
-    return `https://${domain}/${fileName}`;
+    return `https://${domain}${fileName}`;
 }
