@@ -379,17 +379,44 @@ async function uploadToUpYun(base64Data) {
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
+    // 又拍云签名方法
+    const method = 'PUT';
+    const uri = `/${bucket}/${fileName}`;
+    const date = new Date().toUTCString();
+    
+    const signStr = method + '&' + uri + '\n' +
+                    'Date: ' + date + '\n' +
+                    'Host: v0.api.upyun.com';
+    
+    // 使用 HMAC-SHA1 签名
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(password);
+    const signData = encoder.encode(signStr);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-1' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    
     const response = await fetch(url, {
         method: 'PUT',
         headers: {
-            'Authorization': 'UPYUN ' + operator + ':' + btoa(password),
+            'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
+            'Date': date,
             'Content-Type': 'image/jpeg'
         },
         body: blob
     });
     
     if (!response.ok) {
-        throw new Error('上传失败：' + response.statusText);
+        const errorText = await response.text();
+        throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
     return `http://${domain}/${fileName}`;
