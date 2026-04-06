@@ -553,53 +553,22 @@ async function uploadToUpYun(base64Data) {
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
-    // 计算 Content-MD5（十六进制）
-    const contentMD5 = await calculateFileMD5(blob);
+    // 使用基本认证（Basic Auth）
+    // Authorization: Basic base64(operator:password)
+    const authString = operator + ':' + password;
+    const authBase64 = btoa(authString);
     
-    // REST API 签名
-    const method = 'PUT';
-    // 生成 GMT 格式日期，使用 toUTCString 确保格式正确
-    const now = new Date();
-    const date = now.toUTCString();
-    const passwordMD5 = md5(password);
-    
-    // 签名字符串：method&uri&date&contentMD5
-    const signStr = `${method}&${uri}&${date}&${contentMD5}`;
-    
-    // 使用 HMAC-SHA1 签名
-    const encoder = new TextEncoder();
-    const signData = encoder.encode(signStr);
-    const keyData = encoder.encode(passwordMD5);
-    
-    const cryptoKey = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-1' },
-        false,
-        ['sign']
-    );
-    
-    const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
-    
-    console.log('REST API 上传参数:', {
+    console.log('基本认证上传参数:', {
         url,
-        method,
-        uri,
-        date,
-        contentMD5,
         operator,
-        signature: signatureBase64
+        authBase64
     });
     
     const response = await fetch(url, {
-        method: method,
+        method: 'PUT',
         headers: {
-            'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
-            'Date': date,
-            'Content-MD5': contentMD5,
-            'Content-Type': 'image/jpeg',
-            'Host': 'v0.api.upyun.com'
+            'Authorization': 'Basic ' + authBase64,
+            'Content-Type': 'image/jpeg'
         },
         body: blob
     });
