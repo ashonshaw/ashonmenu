@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>点菜 APP</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.11.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div id="login-screen">
+            <h1>点菜 APP</h1>
+            <div class="login-image">
+                <img src="amod.jpg" alt="开饭啦">
+                <div class="login-caption">开饭啦！</div>
+            </div>
+            <div class="role-buttons">
+                <button class="role-btn chef-btn" id="chef-btn">我是厨师 (●'◡'●)</button>
+                <button class="role-btn customer-btn" id="customer-btn">我是食客 (^•ェ•)o</button>
+            </div>
+        </div>
+        <div id="shop-screen" style="display: none;">
+            <h1>店家管理</h1>
+            <button class="back-btn" id="back-to-login-shop">返回</button>
+            <button id="add-dish-btn">添加菜品</button>
+            <div id="dish-list"></div>
+            <div id="order-list"></div>
+        </div>
+        <div id="add-dish-screen" style="display: none;">
+            <h2>添加菜品</h2>
+            <input type="text" id="dish-name" placeholder="菜品名称">
+            <select id="dish-category">
+                <option value="猪肉类">猪肉类</option>
+                <option value="排骨类">排骨类</option>
+                <option value="禽肉类">禽肉类</option>
+                <option value="水产类">水产类</option>
+                <option value="西餐类">西餐类</option>
+                <option value="牛肉类">牛肉类</option>
+                <option value="蛋类">蛋类</option>
+                <option value="蔬菜类">蔬菜类</option>
+                <option value="其他类">其他类</option>
+            </select>
+            <div class="image-upload">
+                <label for="dish-image">菜品图片:</label>
+                <input type="file" id="dish-image" accept="image/*">
+                <img id="image-preview" style="display: none; max-width: 200px; margin-top: 10px;">
+            </div>
+            <button id="save-dish">保存</button>
+            <button id="cancel-add-dish">取消</button>
+        </div>
+        <div id="customer-screen" style="display: none;">
+            <h1>菜单</h1>
+            <button class="back-btn" id="back-to-login-customer">返回</button>
+            <div id="category-tabs"></div>
+            <div id="customer-dish-list"></div>
+            <div id="cart">
+                <h3>购物车</h3>
+                <div id="cart-items"></div>
+                <div id="total-price">总价：0</div>
+                <button id="submit-order">提交订单</button>
+            </div>
+        </div>
+        <div id="order-success-screen" style="display: none;">
+            <h2>订单提交成功！</h2>
+            <p>您的订单已发送到店家</p>
+            <button id="back-to-menu">返回菜单</button>
+        </div>
+    </div>
+    <footer class="app-footer">
+        <p>Powered by 
+            <a href="https://www.upyun.com/" target="_blank" rel="noopener noreferrer">
+                <img src="https://cdn.jsdelivr.net/gh/upyun/logos@master/logo/logo-180x60.png" 
+                     alt="又拍云" 
+                     style="height: 20px; vertical-align: middle;">
+            </a>
+        </p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
