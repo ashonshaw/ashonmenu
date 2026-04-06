@@ -370,50 +370,46 @@ document.getElementById('submit-order').addEventListener('click', async () => {
 
 async function uploadToUpYun(base64Data) {
     const bucket = 'ashonmenu';
-    const accessKey = '62275696abca4d12964869d7ab6248ca';
-    const secretKey = '9f7e641d99345c9eb159324f03a840c9';
+    const operator = 'ashonshaw';
+    const password = '7NXR53nJlX1TIvMz78KSmw1crf8uxvKU';
     const domain = 'ashonmenu.test.upcdn.net';
     
     const fileName = `dish-images/${Date.now()}.jpg`;
-    const url = `https://${bucket}.s3.api.upyun.com/${fileName}`;
+    const uri = `/${bucket}${fileName}`;
+    const url = `http://v0.api.upyun.com${uri}`;
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
-    // 使用 S3 风格的签名
+    // 按照 PHP 代码的签名方式
     const method = 'PUT';
-    const contentType = 'image/jpeg';
     const date = new Date().toUTCString();
-    const canonicalizedResource = `/${bucket}/${fileName}`;
     
-    // 构建签名字符串
-    const signStr = `${method}\n\n${contentType}\n${date}\n${canonicalizedResource}`;
-    
-    // 使用 HMAC-SHA1 签名
+    // 签名：先对密码做 MD5，然后用 HMAC-SHA1 签名
     const encoder = new TextEncoder();
-    const keyData = encoder.encode(secretKey);
+    const passwordBytes = await crypto.subtle.digest('MD5', encoder.encode(password));
+    const passwordArray = new Uint8Array(passwordBytes);
+    
+    // 签名字符串：PUT&uri&date
+    const signStr = `${method}&${uri}&${date}`;
     const signData = encoder.encode(signStr);
     
+    // 使用 HMAC-SHA1，密钥是密码的 MD5
     const cryptoKey = await crypto.subtle.importKey(
         'raw',
-        keyData,
+        passwordArray,
         { name: 'HMAC', hash: 'SHA-1' },
         false,
         ['sign']
     );
     
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
-    const signatureArray = new Uint8Array(signature);
-    const signatureHex = Array.from(signatureArray)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
     
     const response = await fetch(url, {
         method: 'PUT',
         headers: {
-            'Authorization': 'UPYUN ' + accessKey + ':' + btoa(signatureHex),
-            'Date': date,
-            'Content-Type': contentType,
-            'x-upyun-content-sha1': btoa(signatureHex)
+            'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
+            'Date': date
         },
         body: blob
     });
@@ -423,5 +419,5 @@ async function uploadToUpYun(base64Data) {
         throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
-    return `http://${domain}/${fileName}`;
+    return `http://${domain}${fileName}`;
 }
