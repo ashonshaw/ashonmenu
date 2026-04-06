@@ -519,6 +519,28 @@ function md5(str) {
     return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
 }
 
+// 计算文件的 MD5（十六进制）
+async function calculateFileMD5(blob) {
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    
+    // 将 Uint8Array 转换为 WordArray（用于 MD5 计算）
+    const words = [];
+    for (let i = 0; i < uint8Array.length; i++) {
+        words[i >>> 2] |= (uint8Array[i] & 0xff) << ((i % 4) * 8);
+    }
+    
+    // 使用现有的 MD5 逻辑
+    // 这里我们需要一个能处理二进制数据的 MD5 函数
+    // 暂时使用简单的字符串转换
+    let binaryString = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+    }
+    
+    return md5(binaryString);
+}
+
 async function uploadToUpYun(base64Data) {
     const bucket = 'ashonmenu';
     const operator = 'ashonshaw';
@@ -531,22 +553,14 @@ async function uploadToUpYun(base64Data) {
     
     const blob = await fetch(base64Data).then(r => r.blob());
     
-    // 计算 Content-MD5
-    const arrayBuffer = await blob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    let binaryString = '';
-    for (let i = 0; i < uint8Array.length; i++) {
-        binaryString += String.fromCharCode(uint8Array[i]);
-    }
-    const contentMD5 = md5(binaryString);
+    // 计算 Content-MD5（十六进制）
+    const contentMD5 = await calculateFileMD5(blob);
     
     // REST API 签名
     const method = 'PUT';
-    // 生成 GMT 格式日期，例如：Mon, 06 Apr 2026 07:34:55 GMT
+    // 生成 GMT 格式日期，使用 toUTCString 确保格式正确
     const now = new Date();
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const date = `${days[now.getUTCDay()]}, ${String(now.getUTCDate()).padStart(2, '0')} ${months[now.getUTCMonth()]} ${now.getUTCFullYear()} ${String(now.getUTCHours()).padStart(2, '0')}:${String(now.getUTCMinutes()).padStart(2, '0')}:${String(now.getUTCSeconds()).padStart(2, '0')} GMT`;
+    const date = now.toUTCString();
     const passwordMD5 = md5(password);
     
     // 签名字符串：method&uri&date&contentMD5
@@ -584,7 +598,8 @@ async function uploadToUpYun(base64Data) {
             'Authorization': 'UPYUN ' + operator + ':' + signatureBase64,
             'Date': date,
             'Content-MD5': contentMD5,
-            'Content-Type': 'image/jpeg'
+            'Content-Type': 'image/jpeg',
+            'Host': 'v0.api.upyun.com'
         },
         body: blob
     });
