@@ -535,7 +535,7 @@ async function uploadToUpYun(base64Data) {
     // 生成 policy：Base64 编码的 JSON
     const policyObj = {
         bucket: bucket,
-        save_key: saveKey,
+        "save-key": saveKey,
         expiry: expiry,
         allow_file_type: "jpg,jpeg,png,gif"
     };
