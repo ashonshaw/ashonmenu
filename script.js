@@ -555,7 +555,20 @@ async function uploadToUpYun(base64Data) {
     );
     
     const signature = await crypto.subtle.sign('HMAC', cryptoKey, signData);
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
+    const signatureArray = new Uint8Array(signature);
+    const signatureHex = Array.from(signatureArray)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    const signatureBase64 = btoa(signatureHex);
+    
+    console.log('上传参数:', {
+        url,
+        method,
+        uri,
+        date,
+        operator,
+        signature: signatureBase64
+    });
     
     const response = await fetch(url, {
         method: 'PUT',
@@ -566,8 +579,11 @@ async function uploadToUpYun(base64Data) {
         body: blob
     });
     
+    console.log('响应状态:', response.status);
+    
     if (!response.ok) {
         const errorText = await response.text();
+        console.error('错误详情:', errorText);
         throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
