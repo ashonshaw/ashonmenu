@@ -533,7 +533,12 @@ async function uploadToUpYun(base64Data) {
     
     // 计算 Content-MD5
     const arrayBuffer = await blob.arrayBuffer();
-    const contentMD5 = md5(arrayBuffer);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    let binaryString = '';
+    for (let i = 0; i < uint8Array.length; i++) {
+        binaryString += String.fromCharCode(uint8Array[i]);
+    }
+    const contentMD5 = md5(binaryString);
     
     // REST API 签名
     const method = 'PUT';
