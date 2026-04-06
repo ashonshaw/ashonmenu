@@ -581,5 +581,5 @@ async function uploadToUpYun(base64Data) {
         throw new Error('上传失败：' + response.statusText + ' - ' + errorText);
     }
     
-    return `https://${domain}/${fileName}`;
+    return `http://${domain}/${fileName}`;
 }
