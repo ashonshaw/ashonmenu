@@ -568,7 +568,7 @@ async function uploadToUpYun(base64Data) {
     formData.append('file', blob, 'image.jpg');
     
     // 表单上传 URL
-    const url = 'https://v0.api.upyun.com/upload';
+    const url = `https://v0.api.upyun.com/${bucket}/upload`;
     
     const response = await fetch(url, {
         method: 'POST',
